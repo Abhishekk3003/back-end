@@ -180,4 +180,84 @@ const logoutUser = asyncHandler(async (req,res) => {
 
 })
 
-export {registerUser,loginUser,logoutUser};
+const changeCurrentPassword = asyncHandler(async(req,res) => {
+    const {oldPassword,newPassword} = req.body
+
+    const user = await User.findById(req.user?._id)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect){
+      throw new ApiError(400,"invalid password")
+    }
+
+    user.passwod = newPassword
+    await user.save({validateBeforeSave:false});
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,{},"Password Change Successfully"))
+
+
+})
+
+
+const currentUser = asyncHandler(async(req,res) => {
+    return res
+    .status(200)
+    .json(200,res.user,"current user fetched successfully")
+})
+
+const updateAccountDetails = asyncHandler(async(rea,res) => {
+    const {fullName,email} = req.body
+
+    if(!(fullName || email)){
+        throw new ApiError(400,"Allfields are required")
+    }
+   const user = await User.findByIdAndUpdate(req.user?._id,
+        {
+            $set:{
+                fullName,
+                email:email
+            }
+        },
+        {new:true}
+    ).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,user,"Account update successfully"))
+})
+
+
+const updateUserAvatar = asyncHandler(async(req,res) => {
+    const avatarLocalPath =  req.file?.path
+
+    if(!avatarLocalPath){
+       throw new ApiError(400,"Avatar file is missing")
+    }
+
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+
+    if(!avatar.url){
+       throw new ApiError(400,"error while uploading")
+    }
+
+   const user = User.findByIdAndUpdate(req.user?._id,{
+        $set:{
+            avatar:avatar.url
+        }
+    },{new:true}).select("-password")
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,user,"avatar is uploading successfully"))
+
+})
+
+export {registerUser
+    ,loginUser
+    ,logoutUser
+    ,changeCurrentPassword
+    ,currentUser
+    ,updateAccountDetails
+    ,updateUserAvatar};
