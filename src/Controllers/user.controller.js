@@ -254,10 +254,73 @@ const updateUserAvatar = asyncHandler(async(req,res) => {
 
 })
 
+
+const getUserChannelProfile = asyncHandler(async(req,res) => {
+    //using params u will get the username through the url
+    const {username} = req.params
+
+    if(!username){
+        throw new ApiError(400,"username is missing")
+    }
+
+    const channel = await User.aggregate([
+        {
+        $match:{
+            username:username?.toLowerCase()
+        }
+    },
+       {
+
+          // user suscriber
+            $lookup:{
+                from:"subscriptions",
+                localField:"_id",
+                foreignField:"channel",
+                as:"subscribers"
+            }
+        },
+        {
+            // user channel suscribe
+            $lookup:{
+                from:"subcriptions",
+                localField:"_id",
+                foreignField:"subscriber",
+                as:"suscribedTo"
+            }
+        },{
+            // addfield is used to add the upper two fields
+            $addFields:{
+                subscribersCount:{
+                    $size:"$subscribers"
+                },
+                channelsSubscriberToCount:{
+                    $size:"$suscribedTo"
+                }
+
+            }
+        }
+
+
+
+
+])
+    
+
+     if(!channel?.length){
+        throw new ApiError(404,"channel does'nt exixts")
+     }
+    
+    return res
+    .status(200)
+    .json(new ApiResponse (200,channel[0],"user channel fetched successfully"))
+
+})
+
 export {registerUser
     ,loginUser
     ,logoutUser
     ,changeCurrentPassword
     ,currentUser
     ,updateAccountDetails
-    ,updateUserAvatar};
+    ,updateUserAvatar
+    ,getUserChannelProfile};
